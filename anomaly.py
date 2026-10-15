@@ -107,6 +107,59 @@ def split_column_types(data: pd.DataFrame) -> tuple[list[str], list[str]]:
 # ---------------------------------------------------------------------------
 # feature building
 # ---------------------------------------------------------------------------
+def normalise_categories(values: pd.Series) -> pd.Series:
+    """Normalise formatting without merging different mineral species."""
+    text = values.astype("string").str.strip()
+    text = text.str.replace(r"\s+", " ", regex=True).str.casefold()
+
+    # Same missing-text conventions already used by this model.
+    missing = text.isna() | text.isin(
+        ["", "nan", "none", "null", "na", "n/a"]
+    )
+    return text.astype(object).where(~missing, np.nan)
+
+
+def prepare_categories(
+    data: pd.DataFrame,
+    categorical: list[str],
+    min_valid: int = 1000,
+) -> tuple[list[str], dict[str, str]]:
+    """Normalise categories and omit exactly duplicate classification inputs.
+
+    Original CSV files remain unchanged. Duplicate checking requires:
+    - the same classification role, e.g. Min1 against Min1;
+    - at least min_valid non-missing readings;
+    - identical values AND missing-value locations across every row.
+    """
+    for column in categorical:
+        data[column] = normalise_categories(data[column])
+
+    kept = []
+    dropped = {}
+    classification_roles = {
+        "Min1", "Min2", "Min3", "Grp1", "Grp2", "Grp3"
+    }
+
+    for column in categorical:
+        role = column.split(" ", 1)[0]
+        valid_count = int(data[column].notna().sum())
+        duplicate_of = None
+
+        if role in classification_roles and valid_count >= min_valid:
+            for previous in kept:
+                if previous.split(" ", 1)[0] != role:
+                    continue
+                if data[column].equals(data[previous]):
+                    duplicate_of = previous
+                    break
+
+        if duplicate_of is None:
+            kept.append(column)
+        else:
+            dropped[column] = duplicate_of
+
+    return kept, dropped
+
 
 def build_interval_features(
     data: pd.DataFrame,
@@ -144,9 +197,7 @@ def build_interval_features(
             parts.append(by_bin.std().rename(f"{column} [sd]"))
 
     for column in categorical:
-        text = frame[column].astype(str).str.strip()
-        blank = text.str.lower().isin(["", "nan", "none", "null", "na", "n/a"])
-        text = text.where(~blank)
+        text = normalise_categories(frame[column])
         top = text.value_counts().head(MAX_CATEGORIES).index.tolist()
         for category in top:
             indicator = (text == category).astype(float)
@@ -362,7 +413,10 @@ def top_contributors(row: np.ndarray, names: list[str], limit: int = 3) -> str:
         if abs(row[index]) < 1.0:
             continue
         direction = "high" if row[index] > 0 else "low"
-        parts.append(f"{names[index]} ({direction}, {row[index]:+.1f} sd)")
+        parts.append(
+            f"{names[index]} "
+            f"({direction}, scaled deviation {row[index]:+.1f})"
+        )
     return "; ".join(parts)
 
 
@@ -504,6 +558,17 @@ def main() -> int:
         )
 
     numeric, categorical = split_column_types(data)
+    categorical, dropped_channels = prepare_categories(data, categorical)
+    for removed, retained in dropped_channels.items():
+        print(
+            f"Duplicate classification: omitted {removed}; "
+            f"retained {retained}",
+            flush=True,
+        )
+    print(
+        f"Category preparation: {len(dropped_channels)} exact duplicates omitted",
+        flush=True,
+    )
     print(
         f"loaded {len(data):,} samples from {hole_count} holes "
         f"({len(numeric)} numeric, {len(categorical)} categorical columns)",
