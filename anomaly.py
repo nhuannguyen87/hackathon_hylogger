@@ -413,7 +413,10 @@ def top_contributors(row: np.ndarray, names: list[str], limit: int = 3) -> str:
         if abs(row[index]) < 1.0:
             continue
         direction = "high" if row[index] > 0 else "low"
-        parts.append(f"{names[index]} ({direction}, {row[index]:+.1f} sd)")
+        parts.append(
+            f"{names[index]} "
+            f"({direction}, scaled deviation {row[index]:+.1f})"
+        )
     return "; ".join(parts)
 
 
