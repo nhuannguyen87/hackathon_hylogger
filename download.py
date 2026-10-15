@@ -1,8 +1,10 @@
 #!/usr/bin/env python
-"""Download the NVCL original package in bulk.
+"""Download NVCL drill-hole packages in bulk, through nvcl_kit.
 
-Write `` data/raw/<hole_id >`` independently for each borehole. Use ``. part``` breakpoints for all large files.
-Documents; The failure of a drilling hole will not pollute other drilling holes, nor will it delete the old files that have been successful.
+Each hole goes to its own data/raw/<hole_id>/ folder, and large files are
+written to a .part file first, so an interrupted run picks up where it
+stopped. A hole that fails never touches another hole's files, nor deletes
+files that already downloaded successfully.
 """
 
 from __future__ import annotations
@@ -756,16 +758,16 @@ def backfill_datasets(out_root: Path, cache_root: Path, provider: str, holes: li
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="批量下载 NVCL 钻孔原始包")
-    parser.add_argument("hole_ids", nargs="*", help="一个或多个钻孔号")
-    parser.add_argument("--holes-file", help="钻孔号文本或 CSV（列名 hole_id/nvcl_id）")
-    parser.add_argument("--provider", default="wa", help="NVCL provider（默认 wa）")
-    parser.add_argument("--out", default=str(HERE / "data"), help="数据根目录")
-    parser.add_argument("--cache", help="缓存根目录（默认 <out>/.cache）")
-    parser.add_argument("--workers", type=int, default=1, help="同时下载的钻孔数（默认 1）")
+    parser = argparse.ArgumentParser(description="Download NVCL drill-hole packages in bulk")
+    parser.add_argument("hole_ids", nargs="*", help="one or more hole ids")
+    parser.add_argument("--holes-file", help="text file of hole ids, or a CSV with a hole_id/nvcl_id column")
+    parser.add_argument("--provider", default="wa", help="NVCL provider (default: wa)")
+    parser.add_argument("--out", default=str(HERE / "data"), help="data root folder")
+    parser.add_argument("--cache", help="cache folder (default: <out>/.cache)")
+    parser.add_argument("--workers", type=int, default=1, help="holes downloaded at once (default: 1)")
     parser.add_argument(
         "--scalars-only", action="store_true",
-        help="只下载元数据 + TSA 矿物量表标量 CSV，跳过光谱/剖面/图像（体积从数百 MB 降到几 KB 每孔）",
+        help="metadata and TSA mineral scalar CSVs only, no spectra, profiles or images (a few MB a hole instead of hundreds)",
     )
     parser.add_argument(
         "--backfill-datasets", action="store_true",

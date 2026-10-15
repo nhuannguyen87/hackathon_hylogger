@@ -4,7 +4,7 @@ import numpy as np
 import pyarrow.parquet as pq
 from _media_common import *
 
-LABEL='指示线按样本序号估算位置；深度与结果来自所选样本。'
+LABEL='The marker is placed by sample number; depth and results come from the selected sample.'
 
 @lru_cache(maxsize=32)
 def parquet_group(path, checksum, size, mtime, group):

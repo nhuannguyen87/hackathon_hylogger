@@ -4,13 +4,14 @@ A web app that makes GSWA's HyLogger mineral logs readable at a glance: on a
 map, down a hole and in a section. Uncertain readings, lab assays and data
 problems are shown rather than hidden.
 
-![Section view of 15 drill holes near Boddington, coloured by mineral down each hole](docs/screenshots/section-minerals.jpg)
+![The 3D tab comparing holes 05GJD001 and 05KCD001: tray photos wrapped on true-scale cores side by side at 150.6 m, each with its mineral log, drawn 0.59 km apart on the map](docs/screenshots/compare-3d.jpg)
+
+_The 3D tab: two holes 0.59 km apart, compared at the same depth. Each core is its NVCL tray photos on a true-scale cylinder, with the dominant mineral group beside it and the full mineral log on the right._
 
 | | |
 |---|---|
 | **Team** | The Hole Truth |
-| **Members** | nhuannguyen87 (solo) |
-| **Captain** | nhuannguyen87 |
+| **Leader (team captain)** | nhuannguyen87 |
 | **Challenge theme** | Data Visualisation & Interactivity, drawing on Data Crunch and Data Adoption |
 
 ## The problem

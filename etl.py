@@ -774,11 +774,11 @@ def discover_holes(raw_root: Path) -> list[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="把 NVCL 原始包转换成 5 类可读 CSV")
-    parser.add_argument("hole_ids", nargs="*", help="钻孔号；省略时处理 raw 下全部钻孔")
-    parser.add_argument("--holes-file", help="钻孔号文本或 CSV")
-    parser.add_argument("--out", default=str(HERE / "data"), help="数据根目录")
-    parser.add_argument("--raw-root", help="原始包根目录（默认 <out>/raw）")
+    parser = argparse.ArgumentParser(description="Convert NVCL raw packages into five kinds of readable CSV")
+    parser.add_argument("hole_ids", nargs="*", help="hole ids; leave out to process every hole under raw/")
+    parser.add_argument("--holes-file", help="text file of hole ids, or a CSV")
+    parser.add_argument("--out", default=str(HERE / "data"), help="data root folder")
+    parser.add_argument("--raw-root", help="raw package folder (default: <out>/raw)")
     args = parser.parse_args()
     data_root = Path(args.out).resolve()
     raw_root = Path(args.raw_root).resolve() if args.raw_root else data_root / "raw"

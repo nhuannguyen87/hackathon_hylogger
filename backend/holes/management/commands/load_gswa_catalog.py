@@ -32,7 +32,7 @@ from holes.minerals import commodity_codes
 from holes.models import Hole, VocabTerm
 
 FOLDER = "First Meeting & Dataset Access - RE_ GSWA HyLogger Capstone"
-# next to the repo on a teammate's machine (CITS5553/team), one further up here
+# the dataset-access folder beside the project folder, or one level further up
 DEFAULT_DIRS = [settings.PROJECT_ROOT.parent / FOLDER, settings.PROJECT_ROOT.parent.parent / FOLDER]
 
 LINK_COLUMNS = {
