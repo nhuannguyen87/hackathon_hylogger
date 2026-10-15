@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Node / Next.js
+node_modules/
+frontend/.next/
+frontend/.env.local
+frontend/npm-debug.log*
+
+# Environment files (keep the .example templates)
+.env
+!.env.example
+!frontend/.env.example
+
+# Data: never committed (GSWA rule). Keep only the scripts in data/.
+data/*
+!data/*.py
+files/data/
+*.sqlite
+*.db
+*.tsg
+*.zip
+INTERIM_HyLogger_Dataset_Package*/
+
+# Django (setup.sh / reload-data.sh retrain the model)
+backend/**/migrations/**/*.pyc
+backend/ml_models/
+*.sqlite3
+staticfiles/
+
+# OS / editor cruft
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# leftover cleanup scratch
+_to_delete/
+
+# data/build_derived.py output (regenerate it, ~1.5 min)
+frontend/public/derived/
+
+# Claude Code local settings (dev-server paths on this machine)
+.claude/

@@ -1,0 +1,28 @@
+# Demo holes for a fresh clone: ./get-data.sh fetches them from GSWA's
+# open-file HyLogger data through NVCL's API (nvcl_kit). Hole names only -
+# no HyLogger data is kept in this repo.
+#
+# Boddington area (~32.75 S, 116.35 E): 14 deep, inclined diamond holes,
+# most at GSWA processing Level 2, several with company gold assays -
+# a good first section view.
+WRD08965-001
+WRD09370-001
+WRD10405-001
+WRD10570-001
+WRD10790-005
+WRD11695-001
+WRD11720-003
+WRD12010-001
+WRD12635-001
+WRD12725-001
+WRD12980-001
+WRD13125-001
+WRD13400-001
+WRD13645-002
+# East of Kalgoorlie (~30.72 S, 122.57 E): Level 2, assayed
+BBDD0001
+BBDD0002
+BBDD0003
+BBDD0004
+BBDD0005
+BBDD0006

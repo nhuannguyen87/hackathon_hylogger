@@ -1,0 +1,186 @@
+"""
+Load data/holes.csv and data/measurements.csv into Postgres.
+
+    python manage.py load_data
+    python manage.py load_data --dir /path/to/other/csvs
+    python manage.py load_data --replace     # wipe the tables first
+
+data/metres.json (data/build_derived.py), when present, adds each metre's
+mineral mix and specific mineral; without it those stay empty.
+
+This is the seam between your existing etl.py and the website. If etl.py starts
+producing extra columns, the only file you need to touch is this one.
+"""
+
+import csv
+import json
+from pathlib import Path
+
+from django.conf import settings
+from django.core.management.base import BaseCommand
+from django.db import transaction
+
+from holes.models import Hole, Measurement
+
+BATCH_SIZE = 5000
+
+
+def to_float(value, default=None):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def to_bool(value):
+    return str(value).strip().lower() in ("true", "1", "yes")
+
+
+def load_derived(path):
+    """data/metres.json -> lookup(hole_id, depth_from_m) -> (species, mix)."""
+    if not path.exists():
+        return lambda hole_id, depth: ("", {})
+    derived = json.loads(path.read_text())
+    groups = {"swir": derived["swir_groups"], "tir": derived["tir_groups"]}
+
+    def lookup(hole_id, depth):
+        entry = derived["holes"].get(hole_id)
+        if entry is None or depth is None:
+            return "", {}
+        i = int(depth) - entry["from"]
+        if i < 0:
+            return "", {}
+        mix = {}
+        for kind, names in groups.items():
+            rows = entry.get(kind)
+            row = rows[i] if rows and i < len(rows) else None
+            if row:
+                mix[kind] = {name: share for name, share in zip(names, row) if share}
+        names = entry.get("species")
+        species = names[i] if names and i < len(names) else None
+        return species or "", mix
+
+    return lookup
+
+
+class Command(BaseCommand):
+    help = "Load holes.csv and measurements.csv into the database."
+
+    def add_arguments(self, parser):
+        parser.add_argument("--dir", default=str(settings.DATA_DIR),
+                            help="Folder containing holes.csv and measurements.csv")
+        parser.add_argument("--replace", action="store_true",
+                            help="Delete existing rows before loading")
+
+    def handle(self, *args, **options):
+        data_dir = Path(options["dir"])
+        holes_csv = data_dir / "holes.csv"
+        measurements_csv = data_dir / "measurements.csv"
+
+        if not holes_csv.exists():
+            raise SystemExit(
+                f"Can't find {holes_csv}.\n"
+                "Run the ETL pipeline first (README: Plugging in your real data), "
+                "or point --dir at your own CSVs."
+            )
+
+        if options["replace"]:
+            self.stdout.write("Clearing existing rows...")
+            Measurement.objects.all().delete()
+            Hole.objects.all().delete()
+
+        self.load_holes(holes_csv)
+        if measurements_csv.exists():
+            self.load_measurements(measurements_csv)
+        else:
+            self.stdout.write(self.style.WARNING(f"No {measurements_csv} - skipping."))
+
+        self.stdout.write(self.style.SUCCESS(
+            f"Done. {Hole.objects.count()} holes, {Measurement.objects.count()} measurements."
+        ))
+
+    @transaction.atomic
+    def load_holes(self, path):
+        holes = []
+        with open(path, newline="") as handle:
+            for row in csv.DictReader(handle):
+                holes.append(Hole(
+                    hole_id=row["hole_id"].strip(),
+                    hole_name=row.get("hole_name", "").strip(),
+                    latitude=to_float(row.get("latitude")),
+                    longitude=to_float(row.get("longitude")),
+                    easting=to_float(row.get("easting")),
+                    northing=to_float(row.get("northing")),
+                    elevation_m=to_float(row.get("elevation_m")),
+                    borehole_length_m=to_float(row.get("borehole_length_m")),
+                    inclination_deg=to_float(row.get("inclination_deg"), -90.0),
+                    azimuth_deg=to_float(row.get("azimuth_deg"), 0.0),
+                    confidential=to_bool(row.get("confidential")),
+                ))
+        Hole.objects.bulk_create(
+            holes, batch_size=BATCH_SIZE,
+            update_conflicts=True,
+            update_fields=["hole_name", "latitude", "longitude", "easting", "northing",
+                           "elevation_m", "borehole_length_m", "inclination_deg", "azimuth_deg",
+                           "confidential"],
+            unique_fields=["hole_id"],
+        )
+        self.stdout.write(f"Loaded {len(holes)} holes.")
+
+    @transaction.atomic  # the delete below is undone if the reload fails part-way
+    def load_measurements(self, path):
+        known_holes = set(Hole.objects.values_list("hole_id", flat=True))
+        derived = load_derived(path.parent / "metres.json")
+        Measurement.objects.all().delete()
+
+        buffer, total, skipped = [], 0, 0
+        with open(path, newline="") as handle:
+            reader = csv.DictReader(handle)
+            # any column named band_* becomes a model feature
+            band_columns = [c for c in reader.fieldnames if c.startswith("band_")]
+
+            for row in reader:
+                hole_id = row["hole_id"].strip()
+                if hole_id not in known_holes:
+                    skipped += 1
+                    continue
+
+                features = {}
+                for column in band_columns:
+                    value = to_float(row.get(column))
+                    if value is not None:
+                        features[column] = value
+
+                depth_from = to_float(row.get("depth_from_m"), 0.0)
+                species, mix = derived(hole_id, depth_from)
+                buffer.append(Measurement(
+                    hole_id=hole_id,
+                    sample_no=int(to_float(row.get("sample_no"), 0)),
+                    depth_from_m=depth_from,
+                    depth_to_m=to_float(row.get("depth_to_m"), 0.0),
+                    mineral_1=(row.get("mineral_1") or "").strip(),
+                    mineral_1_pct=to_float(row.get("mineral_1_pct")),
+                    mineral_1_species=species,
+                    mix=mix,
+                    mineral_2=(row.get("mineral_2") or "").strip(),
+                    mineral_2_pct=to_float(row.get("mineral_2_pct")),
+                    confidence=to_float(row.get("confidence"), 0.0),
+                    quality_flag=(row.get("quality_flag") or "ok").strip(),
+                    why=(row.get("why") or "").strip(),
+                    features=features,
+                ))
+
+                if len(buffer) >= BATCH_SIZE:
+                    Measurement.objects.bulk_create(buffer)
+                    total += len(buffer)
+                    buffer = []
+
+        if buffer:
+            Measurement.objects.bulk_create(buffer)
+            total += len(buffer)
+
+        self.stdout.write(f"Loaded {total} measurements ({len(band_columns)} band columns).")
+        if skipped:
+            self.stdout.write(self.style.WARNING(
+                f"Skipped {skipped} rows whose hole_id isn't in holes.csv."
+            ))
