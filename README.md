@@ -11,8 +11,9 @@ _The 3D tab: two holes 0.59 km apart, compared at the same depth. Each core is i
 | | |
 |---|---|
 | **Team** | The Hole Truth |
-| **Leader (team captain)** | Thi Nguyen (@nhuannguyen87) |
+| **Leader** | Thi Nguyen (@nhuannguyen87) |
 | **Challenge theme** | Data Visualisation & Interactivity, drawing on Data Crunch and Data Adoption |
+| **Live**| https://nhuannguyen87.github.io/hackathon_hylogger/
 
 ## The problem
 
