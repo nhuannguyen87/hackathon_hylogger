@@ -108,58 +108,7 @@ None of this data is in the repo. `data/` and the DASC package folder are in
 The demo holes are listed in [`demo-holes.txt`](demo-holes.txt): 14 deep
 holes near Boddington and 6 east of Kalgoorlie. Any NVCL WA hole name works.
 
-## Install and run
 
-You need macOS or Linux (on Windows, use WSL 2), an internet connection, and:
-
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/), running;
-- Python 3.12 exactly, because the pinned scientific packages are built for
-  it (`brew install python@3.12`; Ubuntu 24.04 already has it);
-- Node.js 18 or newer.
-
-The first run downloads about 1 GB: the PostGIS image and the Python and npm
-packages.
-
-1. Recommended: download the DASC package (link above) and unzip it into the
-   project folder. Without it you get the 20 demo holes alone, with no
-   assays, levels or extra holes.
-2. Run the one-time setup. It starts PostGIS in Docker, installs the Python
-   and npm packages, fetches the demo holes from NVCL (5 to 10 minutes),
-   builds the per-metre data, loads it and trains the anomaly model.
-
-   ```bash
-   git clone https://github.com/nhuannguyen87/hackathon_hylogger.git
-   cd hackathon_hylogger
-   ./setup.sh
-   ```
-
-3. Start the API and the website, each in its own terminal tab.
-
-   ```bash
-   ./run-backend.sh
-   ```
-
-   ```bash
-   ./run-frontend.sh
-   ```
-
-4. Open <http://localhost:3000>.
-
-To add holes, list NVCL WA hole names one per line in a file, then fetch and
-load them:
-
-```bash
-./get-data.sh my-holes.txt && ./reload-data.sh
-```
-
-If you add the DASC package after setup, run the same line without
-`my-holes.txt`, so the demo holes' Level 2 results are read.
-
-The backend tests run against a throwaway database:
-
-```bash
-cd backend && ../.venv/bin/python manage.py test holes
-```
 
 ## How it is built
 
